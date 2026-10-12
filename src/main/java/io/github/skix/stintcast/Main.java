@@ -1,4 +1,4 @@
-package io.github.skix;
+package io.github.skix.stintcast;
 
 public class Main {
     public static void main(String[] args) {
