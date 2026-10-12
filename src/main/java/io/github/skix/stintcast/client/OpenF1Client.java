@@ -15,6 +15,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
+/**
+ * Client for the OpenF1 REST API (https://openf1.org).
+ */
 public class OpenF1Client {
 
     private static final String BASE_URL = "https://api.openf1.org/v1/";
@@ -22,10 +25,16 @@ public class OpenF1Client {
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
 
+    /**
+     * Creates a client with a default HTTP client and JSON mapper.
+     */
     public OpenF1Client() {
         this(HttpClient.newHttpClient(), defaultMapper());
     }
 
+    /**
+     * Creates a client with the given HTTP client and JSON mapper.
+     */
     public OpenF1Client(HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.mapper = objectMapper;
@@ -38,18 +47,35 @@ public class OpenF1Client {
         return mapper;
     }
 
-    public List<Lap> getLaps(int sessionKey) throws IOException, InterruptedException { return fetch("laps", sessionKey, new TypeReference<>() {}); }
+    /**
+     * Returns all laps of the given session.
+     */
+    public List<Lap> getLaps(int sessionKey) throws IOException, InterruptedException {
+        return fetch("laps", sessionKey, new TypeReference<>() {});
+    }
 
-    public List<Stint> getStints(int sessionKey) throws IOException, InterruptedException { return fetch("stints", sessionKey, new TypeReference<>() {}); }
+    /**
+     * Returns all stints of the given session.
+     */
+    public List<Stint> getStints(int sessionKey) throws IOException, InterruptedException {
+        return fetch("stints", sessionKey, new TypeReference<>() {});
+    }
 
-    public List<Pit> getPits(int sessionKey) throws IOException, InterruptedException { return fetch("pit", sessionKey, new TypeReference<>() {}); }
+    /**
+     * Returns all pit stops of the given session.
+     */
+    public List<Pit> getPits(int sessionKey) throws IOException, InterruptedException {
+        return fetch("pit", sessionKey, new TypeReference<>() {});
+    }
 
     private <T> List<T> fetch(String endpoint, int sessionKey, TypeReference<List<T>> type)
             throws IOException, InterruptedException {
         String url = BASE_URL + endpoint + "?session_key=" + sessionKey;
         HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(url)).GET().build();
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) throw new IOException("OpenF1 returned status " + response.statusCode() + ": " + response.body());
+        if (response.statusCode() != 200) {
+            throw new IOException("OpenF1 returned status " + response.statusCode() + ": " + response.body());
+        }
         return mapper.readValue(response.body(), type);
     }
 }

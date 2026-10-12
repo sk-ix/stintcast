@@ -3,6 +3,10 @@ package io.github.skix.stintcast.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Raw stint as returned by the OpenF1 {@code stints} endpoint:
+ * the laps a driver completed on the same set of tyres.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Stint(
         @JsonProperty("session_key") Integer sessionKey,

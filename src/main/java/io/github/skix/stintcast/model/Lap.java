@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.OffsetDateTime;
 
+/**
+ * Raw lap as returned by the OpenF1 {@code laps} endpoint.
+ * Fields use wrapper types because any of them may be missing.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Lap(
         @JsonProperty("session_key") Integer sessionKey,
@@ -13,5 +17,5 @@ public record Lap(
         @JsonProperty("lap_duration") Double lapDuration,
         @JsonProperty("is_pit_out_lap") Boolean isPitOutLap,
         @JsonProperty("date_start") OffsetDateTime dateStart
-        ) {
+) {
 }
