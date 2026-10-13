@@ -26,8 +26,9 @@ public class Main {
             List<Lap> laps = client.getLaps(race.sessionKey());
             List<Stint> stints = client.getStints(race.sessionKey());
             List<Pit> pits = client.getPits(race.sessionKey());
+            List<RaceControlMessage> safetyCar = client.getSafetyCarMessages(race.sessionKey());
 
-            List<CleanLap> clean = builder.build(laps, stints, pits);
+            List<CleanLap> clean = builder.build(laps, stints, pits, safetyCar);
             allLaps.addAll(clean);
 
             System.out.printf("%-20s %4d raw laps -> %4d clean laps%n",
@@ -36,5 +37,6 @@ public class Main {
 
         new CsvExporter().write(allLaps, Path.of("data", "laps_2024.csv"));
         System.out.println("\nTotal clean laps: " + allLaps.size());
+
     }
 }

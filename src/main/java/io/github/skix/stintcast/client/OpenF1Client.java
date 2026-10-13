@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.github.skix.stintcast.model.Lap;
-import io.github.skix.stintcast.model.Pit;
-import io.github.skix.stintcast.model.Session;
-import io.github.skix.stintcast.model.Stint;
+import io.github.skix.stintcast.model.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -76,6 +73,12 @@ public class OpenF1Client {
         return fetch("sessions", "year=" + year + "&session_name=Race", new TypeReference<>() {});
     }
 
+    /**
+     * Returns the safety car and virtual safety car messages of the given session.
+     */
+    public List<RaceControlMessage> getSafetyCarMessages(int sessionKey) throws IOException, InterruptedException {
+        return fetch("race_control", "session_key=" + sessionKey + "&category=SafetyCar", new TypeReference<>() {});
+    }
 
     private <T> List<T> fetch(String endpoint, String query, TypeReference<List<T>> type)
             throws IOException, InterruptedException {
@@ -83,9 +86,12 @@ public class OpenF1Client {
         String url = BASE_URL + endpoint + "?" + query;
         HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(url)).GET().build();
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            throw new IOException("OpenF1 returned status " + response.statusCode() + ": " + response.body());
-        }
+
+        // OpenF1 returns 404 instead of an empty list when no record matches the filters
+        if (response.statusCode() == 404 && response.body().contains("No results found")) return List.of();
+
+        if (response.statusCode() != 200) throw new IOException("OpenF1 returned status " + response.statusCode() + ": " + response.body());
+
         return mapper.readValue(response.body(), type);
     }
 }
