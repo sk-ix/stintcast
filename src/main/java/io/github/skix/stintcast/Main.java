@@ -1,34 +1,40 @@
 package io.github.skix.stintcast;
 
 import io.github.skix.stintcast.client.OpenF1Client;
-import io.github.skix.stintcast.model.CleanLap;
-import io.github.skix.stintcast.model.Lap;
-import io.github.skix.stintcast.model.Pit;
-import io.github.skix.stintcast.model.Stint;
+import io.github.skix.stintcast.model.*;
 import io.github.skix.stintcast.pipeline.LapDatasetBuilder;
+import io.github.skix.stintcast.storage.CsvExporter;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        int sessionKey = 9590; // Monza 2024, race
-
         OpenF1Client client = new OpenF1Client();
-        List<Lap> laps = client.getLaps(sessionKey);
-        List<Stint> stints = client.getStints(sessionKey);
-        List<Pit> pits = client.getPits(sessionKey);
+        LapDatasetBuilder builder = new LapDatasetBuilder();
 
-        List<CleanLap> clean = new LapDatasetBuilder().build(laps, stints, pits);
+        List<Session> races = client.getRaceSessions(2024);
+        System.out.println("Races found: " + races.size());
 
-        System.out.println("Raw laps:   " + laps.size());
-        System.out.println("Clean laps: " + clean.size());
+        List<CleanLap> allLaps = new ArrayList<>();
+        for (Session race : races) {
+            if (race.sessionKey() == null) continue;
 
-        System.out.println("\nDriver 16:");
-        clean.stream()
-                .filter(c -> c.driverNumber() == 16)
-                .forEach(c -> System.out.printf("lap %2d | stint %d | %-6s | age %2d | %.3f s%n",
-                        c.lapNumber(), c.stintNumber(), c.compound(), c.tyreAge(), c.lapDuration()));
+            List<Lap> laps = client.getLaps(race.sessionKey());
+            List<Stint> stints = client.getStints(race.sessionKey());
+            List<Pit> pits = client.getPits(race.sessionKey());
+
+            List<CleanLap> clean = builder.build(laps, stints, pits);
+            allLaps.addAll(clean);
+
+            System.out.printf("%-20s %4d raw laps -> %4d clean laps%n",
+                    race.circuitShortName(), laps.size(), clean.size());
+        }
+
+        new CsvExporter().write(allLaps, Path.of("data", "laps_2024.csv"));
+        System.out.println("\nTotal clean laps: " + allLaps.size());
     }
 }
