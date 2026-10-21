@@ -1,6 +1,12 @@
 package io.github.skix.stintcast;
 
 import io.github.skix.stintcast.client.OpenF1Client;
+import io.github.skix.stintcast.evaluation.Backtester;
+import io.github.skix.stintcast.evaluation.RaceSplit;
+import io.github.skix.stintcast.forecast.Forecaster;
+import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
+import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
+import io.github.skix.stintcast.forecast.baseline.NaiveForecaster;
 import io.github.skix.stintcast.model.*;
 import io.github.skix.stintcast.pipeline.LapDatasetBuilder;
 import io.github.skix.stintcast.storage.CsvExporter;
@@ -10,7 +16,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Main {
 
@@ -28,6 +36,35 @@ public class Main {
         }
 
         System.out.println("Total clean laps: " + allLaps.size());
+        RaceSplit.Split split = RaceSplit.chronological(allLaps, 16);
+        System.out.println("Train laps: " + split.train().size() + ", test laps: " + split.test().size());
+        System.out.println("Test races: " + split.test().stream()
+                .map(CleanLap::sessionKey)
+                .distinct()
+                .sorted()
+                .toList());
+
+        evaluateBaselines(split.test());
+    }
+
+    /**
+     * Prints the MAE of each baseline on the given laps, one and five laps ahead.
+     */
+    private static void evaluateBaselines(List<CleanLap> testLaps) {
+        Map<String, Forecaster> baselines = new LinkedHashMap<>();
+        baselines.put("Naive", new NaiveForecaster());
+        baselines.put("Moving avg (5)", new MovingAverageForecaster(5));
+        baselines.put("Linear trend (5)", new LinearTrendForecaster(5));
+
+        Backtester backtester = new Backtester();
+
+        for (int horizon : new int[]{1, 5}) {
+            System.out.println("\nHorizon " + horizon);
+            for (Map.Entry<String, Forecaster> entry : baselines.entrySet()) {
+                double mae = backtester.mae(testLaps, entry.getValue(), horizon);
+                System.out.printf("  %-18s MAE = %.3f s%n", entry.getKey(), mae);
+            }
+        }
     }
 
     /**
