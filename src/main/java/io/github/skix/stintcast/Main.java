@@ -44,6 +44,7 @@ public class Main {
                 .sorted()
                 .toList());
 
+        tuneWindows(split.train());
         evaluateBaselines(split.test());
     }
 
@@ -53,8 +54,8 @@ public class Main {
     private static void evaluateBaselines(List<CleanLap> testLaps) {
         Map<String, Forecaster> baselines = new LinkedHashMap<>();
         baselines.put("Naive", new NaiveForecaster());
-        baselines.put("Moving avg (5)", new MovingAverageForecaster(5));
-        baselines.put("Linear trend (5)", new LinearTrendForecaster(5));
+        baselines.put("Moving avg (3)", new MovingAverageForecaster(3));
+        baselines.put("Linear trend (20, 8)", new LinearTrendForecaster(20, 8));
 
         Backtester backtester = new Backtester();
 
@@ -62,7 +63,7 @@ public class Main {
             System.out.println("\nHorizon " + horizon);
             for (Map.Entry<String, Forecaster> entry : baselines.entrySet()) {
                 double mae = backtester.mae(testLaps, entry.getValue(), horizon);
-                System.out.printf("  %-18s MAE = %.3f s%n", entry.getKey(), mae);
+                System.out.printf("  %-22s MAE = %.3f s%n", entry.getKey(), mae);
             }
         }
     }
@@ -94,5 +95,28 @@ public class Main {
                     race.circuitShortName(), laps.size(), clean.size());
         }
         return result;
+    }
+
+    /**
+     * Prints the MAE five laps ahead of the window-based baselines on the given laps,
+     * for different window sizes, to choose the window without looking at the test races.
+     */
+    private static void tuneWindows(List<CleanLap> trainLaps) {
+        Backtester backtester = new Backtester();
+        int horizon = 5;
+
+        System.out.println("\nWindow tuning on training races (horizon " + horizon + ")");
+        System.out.printf("  naive = %.3f s%n", backtester.mae(trainLaps, new NaiveForecaster(), horizon));
+
+        for (int window : new int[]{3, 5, 10, 15, 20}) {
+            double mae = backtester.mae(trainLaps, new MovingAverageForecaster(window), horizon);
+            System.out.printf("  moving avg   window %2d               = %.3f s%n", window, mae);
+        }
+        for (int window : new int[]{10, 15, 20}) {
+            for (int minLaps : new int[]{3, 5, 8}) {
+                double mae = backtester.mae(trainLaps, new LinearTrendForecaster(window, minLaps), horizon);
+                System.out.printf("  linear trend window %2d, minLaps %d   = %.3f s%n", window, minLaps, mae);
+            }
+        }
     }
 }

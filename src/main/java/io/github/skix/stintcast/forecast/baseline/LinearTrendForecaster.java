@@ -13,14 +13,19 @@ import java.util.List;
 public class LinearTrendForecaster implements Forecaster {
 
     private final int window;
+    private final int minLaps;
 
     /**
-     * @param window how many recent laps to fit the trend on, at least 1
-     * @throws IllegalArgumentException if the window is less than 1
+     * @param window how many recent laps to fit the trend on
+     * @param minLaps the minimum number of laps needed to fit the trend, at least 2 and at most the window;
+     *                with fewer laps the last lap time is returned
+     * @throws IllegalArgumentException if the window or the minimum number of laps is not valid
      */
-    public LinearTrendForecaster(int window) {
+    public LinearTrendForecaster(int window, int minLaps) {
         if (window < 1) throw new IllegalArgumentException("Window must be at least 1");
+        if (minLaps < 2 || minLaps > window) throw new IllegalArgumentException("minLaps must be between 2 and the window");
         this.window = window;
+        this.minLaps = minLaps;
     }
 
     /** {@inheritDoc} */
@@ -32,7 +37,7 @@ public class LinearTrendForecaster implements Forecaster {
 
         List<CleanLap> recent = history.subList(from, history.size());
 
-        if (recent.size() == 1) return recent.getFirst().lapDuration();
+        if (recent.size() < minLaps) return recent.getLast().lapDuration();
 
         double meanX = recent.stream()
                 .mapToInt(CleanLap::lapNumber)

@@ -25,19 +25,19 @@ class LinearTrendForecasterTest {
 
     @Test
     void extendsTheTrendOneLapAhead() {
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(5);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(5, 2);
         assertEquals(90.3, forecaster.forecast(history, 1), DELTA);
     }
 
     @Test
     void extendsTheTrendFiveLapsAhead() {
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(5);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(5, 2);
         assertEquals(90.7, forecaster.forecast(history, 5), DELTA);
     }
 
     @Test
     void returnsTheLapTimeWithASingleLap() {
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(5);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(5, 2);
         assertEquals(91.5, forecaster.forecast(List.of(lap(3, 91.5)), 1), DELTA);
     }
 
@@ -45,7 +45,7 @@ class LinearTrendForecasterTest {
     void usesLapNumbersWhenLapsAreMissing() {
         // laps 12 and 13 were removed by the cleaning
         List<CleanLap> withGap = List.of(lap(10, 90.0), lap(11, 90.1), lap(14, 90.4));
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(5);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(5, 2);
         assertEquals(90.5, forecaster.forecast(withGap, 1), DELTA);
     }
 
@@ -55,18 +55,24 @@ class LinearTrendForecasterTest {
                 lap(1, 95.0), lap(2, 95.0),
                 lap(3, 90.0), lap(4, 90.1), lap(5, 90.2)
         );
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(3);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(3, 2);
         assertEquals(90.3, forecaster.forecast(longHistory, 1), DELTA);
     }
 
     @Test
     void rejectsEmptyHistory() {
-        LinearTrendForecaster forecaster = new LinearTrendForecaster(5);
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(5, 2);
         assertThrows(IllegalArgumentException.class, () -> forecaster.forecast(List.of(), 1));
     }
 
     @Test
     void rejectsWindowBelowOne() {
-        assertThrows(IllegalArgumentException.class, () -> new LinearTrendForecaster(0));
+        assertThrows(IllegalArgumentException.class, () -> new LinearTrendForecaster(0,2 ));
+    }
+
+    @Test
+    void returnsTheLastLapTimeWithFewerLapsThanTheMinimum() {
+        LinearTrendForecaster forecaster = new LinearTrendForecaster(10, 5);
+        assertEquals(90.2, forecaster.forecast(history, 5), DELTA);
     }
 }
