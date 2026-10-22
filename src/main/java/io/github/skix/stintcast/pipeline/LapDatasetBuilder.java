@@ -13,11 +13,16 @@ public class LapDatasetBuilder {
     // Key used to quickly check if a lap is a pit-in lap
     private record DriverLap(int driverNumber, int lapNumber) {}
 
+    // Key used to group the clean laps of a session by stint
+    private record DriverStint(int driverNumber, int stintNumber) {}
+    private static final double MAX_RATIO_TO_STINT_MEDIAN = 1.07;
+
     /**
      * Builds the clean dataset of a session.
      * Discarded laps: missing values, first lap (standing start), laps under safety car
      * or VSC (including the restart lap), pit-out and pit-in laps, laps without a matching
-     * stint, and laps on unknown or wet-weather compounds.
+     * stint, laps on unknown or wet-weather compounds, and laps slower than 107% of the
+     * median lap time of their stint.
      *
      * @param laps     raw laps of the session
      * @param stints   raw stints of the session
@@ -78,7 +83,7 @@ public class LapDatasetBuilder {
             ));
         }
 
-        return result;
+        return removeSlowLaps(result);
     }
 
     /**
@@ -90,6 +95,25 @@ public class LapDatasetBuilder {
         }
 
         return null;
+    }
+
+    /**
+     * Removes the laps slower than {@link #MAX_RATIO_TO_STINT_MEDIAN} times the median lap time
+     * of their stint, such as laps with a red flag, damage or an unrecorded stop.
+     */
+    private static List<CleanLap> removeSlowLaps(List<CleanLap> laps) {
+        Map<DriverStint, List<CleanLap>> byStint = laps.stream()
+                .collect(Collectors.groupingBy(l -> new DriverStint(l.driverNumber(), l.stintNumber())));
+
+        List<CleanLap> result = new ArrayList<>();
+        for (List<CleanLap> stint : byStint.values()) {
+            List<Double> times = stint.stream().map(CleanLap::lapDuration).sorted().toList();
+            double median = times.get(times.size() / 2);
+
+            for (CleanLap lap : stint)
+                if (lap.lapDuration() / median <= MAX_RATIO_TO_STINT_MEDIAN) result.add(lap);
+        }
+        return result;
     }
 
     /**
