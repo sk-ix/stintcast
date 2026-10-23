@@ -1,5 +1,6 @@
 package io.github.skix.stintcast.forecast.regression;
 
+import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
 import io.github.skix.stintcast.model.CleanLap;
 import io.github.skix.stintcast.model.Compound;
@@ -12,8 +13,11 @@ import java.util.List;
 public final class LapFeatures {
 
     /** Number of features returned by {@link #of}. */
-    public static final int COUNT = 4;
+    public static final int COUNT = 6;
+    private static final int SLOPE_WINDOW = 10;
+    private static final int SLOPE_MIN_LAPS = 5;
     private static final MovingAverageForecaster PACE = new MovingAverageForecaster(3);
+
     private LapFeatures(){}
 
     /**
@@ -27,21 +31,27 @@ public final class LapFeatures {
     }
 
     /**
-     * Returns the features of the last lap of the history, always in this order:
-     * tyre age, lap number, 1 if the compound is Medium, 1 if the compound is Hard.
+     * Returns the features of the history, always in this order:
+     * tyre age of the last lap, lap number of the last lap, 1 if the compound is Medium,
+     * 1 if the compound is Hard, difference between the last lap time and the current pace,
+     * and slope of the last 10 laps (0 with fewer than 5 laps).
      * Soft is the reference compound, with both flags equal to 0.
      *
      * @param history the clean laps of the current stint, not empty
-     * @return the features of the last lap
+     * @return the features of the history
      */
     public static double[] of(List<CleanLap> history) {
         CleanLap lastLap = history.getLast();
+        List<CleanLap> recent = history.subList(Math.max(0, history.size() - SLOPE_WINDOW), history.size());
+        double slope = recent.size() >= SLOPE_MIN_LAPS ? LinearTrendForecaster.slope(recent) : 0;
 
         return new double[] {
                 lastLap.tyreAge(),
                 lastLap.lapNumber(),
                 lastLap.compound() == Compound.MEDIUM ? 1 : 0,
-                lastLap.compound() == Compound.HARD ? 1 : 0
+                lastLap.compound() == Compound.HARD ? 1 : 0,
+                lastLap.lapDuration() - currentPace(history),
+                slope
         };
     }
 }

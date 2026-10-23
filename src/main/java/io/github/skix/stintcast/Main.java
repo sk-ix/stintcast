@@ -76,7 +76,7 @@ public class Main {
      * Prints the coefficients learned by the regression model for each horizon.
      */
     private static void printCoefficients(RegressionForecaster model) {
-        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard"};
+        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope"};
         for (int horizon : new int[]{1, 5}) {
             System.out.println("\nRegression coefficients, horizon " + horizon);
             double[] beta = model.coefficients(horizon);
