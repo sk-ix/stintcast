@@ -28,18 +28,19 @@ public class CsvReader {
 
         for (int i = 1; i < lines.size(); i++) {
             String[] values = lines.get(i).split(",");
-            if (values.length != 8) throw new IOException("Invalid row " + (i + 1) + ": expected 8 fields but found " + values.length);
+            if (values.length != 9) throw new IOException("Invalid row " + (i + 1) + ": expected 9 fields but found " + values.length);
 
-            OffsetDateTime dateStart = "null".equals(values[7]) ? null : OffsetDateTime.parse(values[7]);
+            OffsetDateTime dateStart = "null".equals(values[8]) ? null : OffsetDateTime.parse(values[8]);
 
             result.add(new CleanLap(
                     Integer.parseInt(values[0]),
-                    Integer.parseInt(values[1]),
+                    values[1],
                     Integer.parseInt(values[2]),
                     Integer.parseInt(values[3]),
-                    Double.parseDouble(values[4]),
-                    Compound.valueOf(values[5]),
-                    Integer.parseInt(values[6]),
+                    Integer.parseInt(values[4]),
+                    Double.parseDouble(values[5]),
+                    Compound.valueOf(values[6]),
+                    Integer.parseInt(values[7]),
                     dateStart
             ));
         }

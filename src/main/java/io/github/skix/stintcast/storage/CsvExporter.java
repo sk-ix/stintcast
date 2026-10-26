@@ -23,13 +23,14 @@ public class CsvExporter {
 
         try (BufferedWriter writer = Files.newBufferedWriter(path)){
             writer.write(String.join(",",
-                    "sessionKey", "driverNumber", "stintNumber", "lapNumber",
+                    "sessionKey", "circuit", "driverNumber", "stintNumber", "lapNumber",
                     "lapDuration", "compound", "tyreAge", "dateStart"));
             writer.newLine();
 
             for (CleanLap lap : laps) {
                 String line = String.join(",",
                         String.valueOf(lap.sessionKey()),
+                        String.valueOf(lap.circuit()),
                         String.valueOf(lap.driverNumber()),
                         String.valueOf(lap.stintNumber()),
                         String.valueOf(lap.lapNumber()),

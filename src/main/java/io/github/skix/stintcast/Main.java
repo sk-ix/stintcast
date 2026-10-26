@@ -21,18 +21,13 @@ import java.util.*;
 public class Main {
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        List<CleanLap> allLaps;
-        Path csv = Path.of("data", "laps_2024.csv");
 
-        if (Files.exists(csv)) {
-            allLaps = new CsvReader().read(csv);
-            System.out.println("Loaded dataset from " + csv);
-        } else {
-            allLaps = downloadSeason(2024);
-            new CsvExporter().write(allLaps, csv);
-        }
+        List<CleanLap> history = loadSeason(2023);
+        System.out.println("2023 clean laps: " + history.size());
 
+        List<CleanLap> allLaps = loadSeason(2024);
         System.out.println("Total clean laps: " + allLaps.size());
+
         RaceSplit.Split split = RaceSplit.chronological(allLaps, 16);
         System.out.println("Train laps: " + split.train().size() + ", test laps: " + split.test().size());
         System.out.println("Test races: " + split.test().stream()
@@ -109,6 +104,21 @@ public class Main {
     }
 
     /**
+     * Returns the clean laps of the given season, reading them from the CSV file if it exists,
+     * otherwise downloading them from OpenF1 and saving them to the file.
+     */
+    private static List<CleanLap> loadSeason(int year) throws IOException, InterruptedException {
+        Path csv = Path.of("data", "laps_" + year + ".csv");
+        if (Files.exists(csv)) {
+            System.out.println("Loaded " + year + " dataset from " + csv);
+            return new CsvReader().read(csv);
+        }
+        List<CleanLap> laps = downloadSeason(year);
+        new CsvExporter().write(laps, csv);
+        return laps;
+    }
+
+    /**
      * Downloads all race sessions of the given year from OpenF1 and returns their clean laps.
      */
     private static List<CleanLap> downloadSeason(int year) throws IOException, InterruptedException {
@@ -121,14 +131,15 @@ public class Main {
         List<CleanLap> result = new ArrayList<>();
 
         for (Session race : races) {
-            if (race.sessionKey() == null) continue;
+            if (race.sessionKey() == null || race.circuitShortName() == null) continue;
 
             List<Lap> laps = client.getLaps(race.sessionKey());
             List<Stint> stints = client.getStints(race.sessionKey());
             List<Pit> pits = client.getPits(race.sessionKey());
-            List<RaceControlMessage> safetyCar = client.getSafetyCarMessages(race.sessionKey());
+            List<RaceControlMessage> messages = new ArrayList<>(client.getSafetyCarMessages(race.sessionKey()));
+            messages.addAll(client.getRedFlagMessages(race.sessionKey()));
 
-            List<CleanLap> clean = builder.build(laps, stints, pits, safetyCar);
+            List<CleanLap> clean = builder.build(race.circuitShortName(), laps, stints, pits, messages);
             result.addAll(clean);
 
             System.out.printf("%-20s %4d raw laps -> %4d clean laps%n",

@@ -80,6 +80,16 @@ public class OpenF1Client {
         return fetch("race_control", "session_key=" + sessionKey + "&category=SafetyCar", new TypeReference<>() {});
     }
 
+    /**
+     * Returns the red flag messages of the given session.
+     */
+    public List<RaceControlMessage> getRedFlagMessages(int sessionKey) throws IOException, InterruptedException {
+        return fetch("race_control", "session_key=" + sessionKey + "&category=Flag",
+                new TypeReference<List<RaceControlMessage>>() {}).stream()
+                .filter(RaceControlMessage::isRedFlag)
+                .toList();
+    }
+
     private <T> List<T> fetch(String endpoint, String query, TypeReference<List<T>> type)
             throws IOException, InterruptedException {
         Thread.sleep(2000); // OpenF1 free tier: max 30 requests per minute

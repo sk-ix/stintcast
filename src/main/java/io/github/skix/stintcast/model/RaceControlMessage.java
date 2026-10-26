@@ -27,9 +27,14 @@ public record RaceControlMessage(
 
     /**
      * Returns {@code true} if this message ends a neutralisation
-     * ("SAFETY CAR IN THIS LAP" or "... ENDING").
+     * ("SAFETY CAR IN THIS LAP", "... ENDING" or a red flag).
      */
     public boolean isEnd() {
-        return message != null && (message.contains("IN THIS LAP") || message.contains("ENDING"));
+        return message != null && (message.contains("IN THIS LAP") || message.contains("ENDING") || isRedFlag());
     }
+
+    /**
+     * Returns {@code true} if this message shows a red flag.
+     */
+    public boolean isRedFlag() { return message != null && message.contains("RED FLAG"); }
 }

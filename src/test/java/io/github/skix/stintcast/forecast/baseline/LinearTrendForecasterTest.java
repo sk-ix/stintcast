@@ -14,7 +14,7 @@ class LinearTrendForecasterTest {
     private static final double DELTA = 1e-9;
 
     private static CleanLap lap(int lapNumber, double lapDuration) {
-        return new CleanLap(1, 16, 1, lapNumber, lapDuration, Compound.MEDIUM, 0, null);
+        return new CleanLap(1, "Test", 16, 1, lapNumber, lapDuration, Compound.MEDIUM, 0, null);
     }
 
     private final List<CleanLap> history = List.of(
@@ -67,7 +67,7 @@ class LinearTrendForecasterTest {
 
     @Test
     void rejectsWindowBelowOne() {
-        assertThrows(IllegalArgumentException.class, () -> new LinearTrendForecaster(0,2 ));
+        assertThrows(IllegalArgumentException.class, () -> new LinearTrendForecaster(0, 2 ));
     }
 
     @Test

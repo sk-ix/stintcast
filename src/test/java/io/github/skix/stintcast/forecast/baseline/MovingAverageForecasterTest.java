@@ -14,7 +14,7 @@ class MovingAverageForecasterTest {
     private static final double DELTA = 1e-9;
 
     private static CleanLap lap(int lapNumber, double lapDuration) {
-        return new CleanLap(1, 16, 1, lapNumber, lapDuration, Compound.MEDIUM, 0, null);
+        return new CleanLap(1, "Test", 16, 1, lapNumber, lapDuration, Compound.MEDIUM, 0, null);
     }
 
     private final List<CleanLap> history = List.of(

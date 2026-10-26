@@ -24,13 +24,14 @@ public class LapDatasetBuilder {
      * stint, laps on unknown or wet-weather compounds, and laps slower than 107% of the
      * median lap time of their stint.
      *
+     * @param circuit  short name of the circuit of the session
      * @param laps     raw laps of the session
      * @param stints   raw stints of the session
      * @param pits     raw pit stops of the session
-     * @param messages safety car and VSC messages of the session
+     * @param messages safety car, VSC and red flag messages of the session, in any order
      * @return the clean laps, each joined with its stint
      */
-    public List<CleanLap> build(List<Lap> laps, List<Stint> stints, List<Pit> pits, List<RaceControlMessage> messages) {
+    public List<CleanLap> build(String circuit, List<Lap> laps, List<Stint> stints, List<Pit> pits, List<RaceControlMessage> messages) {
 
         Set<DriverLap> pitLaps = pits.stream()
                 .filter(p -> p.driverNumber() != null && p.lapNumber() != null)
@@ -73,6 +74,7 @@ public class LapDatasetBuilder {
 
             result.add(new CleanLap(
                     l.sessionKey(),
+                    circuit,
                     l.driverNumber(),
                     stint.stintNumber(),
                     l.lapNumber(),
@@ -118,13 +120,19 @@ public class LapDatasetBuilder {
 
     /**
      * Returns the lap numbers under safety car or VSC, plus the restart lap.
+     * Messages are processed in time order. A red flag also ends a neutralisation,
+     * since no end message is sent after it.
      * Lap numbers refer to the race leader, so the result is approximate for lapped drivers.
      * A neutralisation still active at the end of the race lasts until {@code lastLap}.
      */
     private Set<Integer> neutralisedLaps (List<RaceControlMessage> messages, int lastLap) {
+        List<RaceControlMessage> sorted = messages.stream()
+                .sorted(Comparator.comparing(RaceControlMessage::date, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
         Integer startLap = null;
         Set<Integer> result = new HashSet<>();
-        for (RaceControlMessage message : messages) {
+        for (RaceControlMessage message : sorted) {
             if (message.lapNumber() == null) continue;
 
             if (message.isStart() && startLap == null) startLap = message.lapNumber();
