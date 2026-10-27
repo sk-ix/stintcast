@@ -29,15 +29,28 @@ public final class StintReplay {
      * @param action receives the history and the real lap time of the target
      */
     public static void forEachCase(List<CleanLap> laps, int horizon, BiConsumer<List<CleanLap>, Double> action) {
+        forEachTarget(laps, horizon, (history, target) -> action.accept(history, target.lapDuration()));
+    }
+
+    /**
+     * For every lap of every stint, passes to the action the laps of the stint up to that lap
+     * and the lap {@code horizon} laps later. Cases whose target lap was removed by the cleaning,
+     * or is after the end of the stint, are skipped.
+     *
+     * @param laps the laps to replay
+     * @param horizon how many laps ahead the target is
+     * @param action receives the history and the target lap
+     */
+    public static void forEachTarget(List<CleanLap> laps, int horizon, BiConsumer<List<CleanLap>, CleanLap> action) {
         for (List<CleanLap> stint : groupByStint(laps).values()) {
-            Map<Integer, Double> lapTimes = stint.stream()
-                    .collect(Collectors.toMap(CleanLap::lapNumber, CleanLap::lapDuration));
+            Map<Integer, CleanLap> byLapNumber = stint.stream()
+                    .collect(Collectors.toMap(CleanLap::lapNumber, lap -> lap));
 
             for (int i = 0; i < stint.size(); i++) {
                 List<CleanLap> history = stint.subList(0, i + 1);
-                Double actual = lapTimes.get(history.getLast().lapNumber() + horizon);
-                if (actual == null) continue;
-                action.accept(history, actual);
+                CleanLap target = byLapNumber.get(history.getLast().lapNumber() + horizon);
+                if (target == null) continue;
+                action.accept(history, target);
             }
         }
     }

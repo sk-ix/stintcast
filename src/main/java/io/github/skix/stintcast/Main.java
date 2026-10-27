@@ -44,6 +44,7 @@ public class Main {
         printCoefficients(model);
 
         evaluate(split.test(), model);
+        printStability(split.test(), model, new MovingAverageForecaster(3), 5);
     }
 
     /**
@@ -82,7 +83,6 @@ public class Main {
         }
     }
 
-
     /**
      * Prints the MAE of the baselines and of the regression model on the given laps,
      * one and five laps ahead.
@@ -93,7 +93,6 @@ public class Main {
         forecasters.put("Moving avg (3)", new MovingAverageForecaster(3));
         forecasters.put("Linear trend (20, 8)", new LinearTrendForecaster(20, 8));
         forecasters.put("Regression", model);
-        
 
         Backtester backtester = new Backtester();
 
@@ -104,6 +103,25 @@ public class Main {
                 System.out.printf("  %-22s MAE = %.3f s%n", entry.getKey(), mae);
             }
         }
+    }
+
+    /**
+     * Prints, for each test race, the MAE of the model and of the best baseline,
+     * and how many races the model wins.
+     */
+    private static void printStability(List<CleanLap> testLaps, Forecaster model, Forecaster baseline, int horizon) {
+        Backtester backtester = new Backtester();
+        Map<String, Double> modelMae = backtester.maeByRace(testLaps, model, horizon);
+        Map<String, Double> baselineMae = backtester.maeByRace(testLaps, baseline, horizon);
+
+        System.out.println("\nStability, horizon " + horizon);
+        int wins = 0;
+        for (String circuit : modelMae.keySet()) {
+            double m = modelMae.get(circuit), b = baselineMae.get(circuit);
+            if (m < b) wins++;
+            System.out.printf("  %-20s model = %.3f s   baseline = %.3f s   %s%n", circuit, m, b, m < b ? "WIN" : "");
+        }
+        System.out.printf("  Model better in %d of %d races%n", wins, modelMae.size());
     }
 
     /**
