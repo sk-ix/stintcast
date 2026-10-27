@@ -8,6 +8,7 @@ import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
 import io.github.skix.stintcast.forecast.baseline.NaiveForecaster;
 import io.github.skix.stintcast.forecast.regression.RegressionForecaster;
+import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.*;
 import io.github.skix.stintcast.pipeline.LapDatasetBuilder;
 import io.github.skix.stintcast.storage.CsvExporter;
@@ -22,8 +23,9 @@ public class Main {
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
-        List<CleanLap> history = loadSeason(2023);
-        System.out.println("2023 clean laps: " + history.size());
+        List<CleanLap> laps2023 = loadSeason(2023);
+        System.out.println("2023 clean laps: " + laps2023.size());
+        TrackHistory tracks = TrackHistory.fromLaps(laps2023);
 
         List<CleanLap> allLaps = loadSeason(2024);
         System.out.println("Total clean laps: " + allLaps.size());
@@ -38,7 +40,7 @@ public class Main {
 
         tuneWindows(split.train());
 
-        RegressionForecaster model = RegressionForecaster.train(split.train(), 1, 5);
+        RegressionForecaster model = RegressionForecaster.train(split.train(), tracks, 1, 5);
         printCoefficients(model);
 
         evaluate(split.test(), model);
@@ -71,7 +73,7 @@ public class Main {
      * Prints the coefficients learned by the regression model for each horizon.
      */
     private static void printCoefficients(RegressionForecaster model) {
-        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope"};
+        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope", "track deg."};
         for (int horizon : new int[]{1, 5}) {
             System.out.println("\nRegression coefficients, horizon " + horizon);
             double[] beta = model.coefficients(horizon);
@@ -91,6 +93,7 @@ public class Main {
         forecasters.put("Moving avg (3)", new MovingAverageForecaster(3));
         forecasters.put("Linear trend (20, 8)", new LinearTrendForecaster(20, 8));
         forecasters.put("Regression", model);
+        
 
         Backtester backtester = new Backtester();
 
