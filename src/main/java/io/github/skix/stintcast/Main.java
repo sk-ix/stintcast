@@ -7,6 +7,7 @@ import io.github.skix.stintcast.forecast.Forecaster;
 import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
 import io.github.skix.stintcast.forecast.baseline.NaiveForecaster;
+import io.github.skix.stintcast.forecast.regression.RaceDegradation;
 import io.github.skix.stintcast.forecast.regression.RegressionForecaster;
 import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.*;
@@ -30,6 +31,8 @@ public class Main {
         List<CleanLap> allLaps = loadSeason(2024);
         System.out.println("Total clean laps: " + allLaps.size());
 
+        RaceDegradation raceDegradation = RaceDegradation.fromLaps(allLaps);
+
         RaceSplit.Split split = RaceSplit.chronological(allLaps, 16);
         System.out.println("Train laps: " + split.train().size() + ", test laps: " + split.test().size());
         System.out.println("Test races: " + split.test().stream()
@@ -40,7 +43,7 @@ public class Main {
 
         tuneWindows(split.train());
 
-        RegressionForecaster model = RegressionForecaster.train(split.train(), tracks, 1, 5);
+        RegressionForecaster model = RegressionForecaster.train(split.train(), tracks, raceDegradation, 1, 5);
         printCoefficients(model);
 
         evaluate(split.test(), model);
@@ -74,7 +77,7 @@ public class Main {
      * Prints the coefficients learned by the regression model for each horizon.
      */
     private static void printCoefficients(RegressionForecaster model) {
-        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope", "track deg."};
+        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope", "track deg.", "race deg."};
         for (int horizon : new int[]{1, 5}) {
             System.out.println("\nRegression coefficients, horizon " + horizon);
             double[] beta = model.coefficients(horizon);

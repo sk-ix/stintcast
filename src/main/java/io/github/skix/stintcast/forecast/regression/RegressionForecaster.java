@@ -20,10 +20,12 @@ public class RegressionForecaster implements Forecaster {
     /** For each horizon, the intercept followed by one coefficient per feature. */
     private final Map<Integer, double[]> coefficients;
     private final TrackHistory tracks;
+    private final RaceDegradation race;
 
-    private RegressionForecaster(Map<Integer, double[]> coefficients, TrackHistory tracks) {
+    private RegressionForecaster(Map<Integer, double[]> coefficients, TrackHistory tracks, RaceDegradation race) {
         this.coefficients = coefficients;
         this.tracks = tracks;
+        this.race = race;
     }
 
     /**
@@ -32,10 +34,11 @@ public class RegressionForecaster implements Forecaster {
      *
      * @param trainLaps the laps to learn from
      * @param tracks    the history of each circuit and compound from the previous season
+     * @param race      the changes observed in each race
      * @param horizons  the horizons the model will be able to forecast
      * @return the trained forecaster
      */
-    public static RegressionForecaster train(List<CleanLap> trainLaps, TrackHistory tracks, int... horizons) {
+    public static RegressionForecaster train(List<CleanLap> trainLaps, TrackHistory tracks, RaceDegradation race, int... horizons) {
         Map<Integer, double[]> coefficients = new HashMap<>();
 
         for (int horizon : horizons) {
@@ -43,7 +46,7 @@ public class RegressionForecaster implements Forecaster {
             List<Double> targets = new ArrayList<>();
 
             StintReplay.forEachCase(trainLaps, horizon, (history, actual) -> {
-                features.add(LapFeatures.of(history, tracks));
+                features.add(LapFeatures.of(history, tracks, race));
                 targets.add(actual - LapFeatures.currentPace(history));
             });
 
@@ -54,7 +57,7 @@ public class RegressionForecaster implements Forecaster {
             );
             coefficients.put(horizon, ols.estimateRegressionParameters());
         }
-        return new RegressionForecaster(coefficients, tracks);
+        return new RegressionForecaster(coefficients, tracks, race);
     }
 
     /** {@inheritDoc} */
@@ -63,7 +66,7 @@ public class RegressionForecaster implements Forecaster {
         ForecastChecks.validate(history, horizon);
 
         double[] beta = coefficientsFor(horizon);
-        double[] x = LapFeatures.of(history, tracks);
+        double[] x = LapFeatures.of(history, tracks, race);
 
         double correction = beta[0];
         for (int i = 0; i < x.length; i++)
