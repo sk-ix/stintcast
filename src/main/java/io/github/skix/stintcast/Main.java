@@ -1,193 +1,43 @@
 package io.github.skix.stintcast;
 
-import io.github.skix.stintcast.client.OpenF1Client;
-import io.github.skix.stintcast.evaluation.Backtester;
+import io.github.skix.stintcast.evaluation.ExperimentReport;
 import io.github.skix.stintcast.evaluation.RaceSplit;
 import io.github.skix.stintcast.forecast.ConformalForecaster;
-import io.github.skix.stintcast.forecast.Forecaster;
-import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
-import io.github.skix.stintcast.forecast.baseline.NaiveForecaster;
 import io.github.skix.stintcast.forecast.regression.RaceDegradation;
 import io.github.skix.stintcast.forecast.regression.RegressionForecaster;
 import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.*;
-import io.github.skix.stintcast.pipeline.LapDatasetBuilder;
-import io.github.skix.stintcast.storage.CsvExporter;
-import io.github.skix.stintcast.storage.CsvReader;
+import io.github.skix.stintcast.pipeline.SeasonLoader;
+import io.github.skix.stintcast.strategy.PitAgeHistory;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) throws IOException, InterruptedException {
+        List<CleanLap> laps2023 = SeasonLoader.load(2023);
+        List<CleanLap> laps2024 = SeasonLoader.load(2024);
 
-        List<CleanLap> laps2023 = loadSeason(2023);
-        System.out.println("2023 clean laps: " + laps2023.size());
         TrackHistory tracks = TrackHistory.fromLaps(laps2023);
+        PitAgeHistory pitAges = PitAgeHistory.fromLaps(laps2023);
+        RaceDegradation raceDegradation = RaceDegradation.fromLaps(laps2024);
 
-        List<CleanLap> allLaps = loadSeason(2024);
-        System.out.println("Total clean laps: " + allLaps.size());
-
-        RaceDegradation raceDegradation = RaceDegradation.fromLaps(allLaps);
-
-        RaceSplit.Split split = RaceSplit.chronological(allLaps, 16);
-        System.out.println("Train laps: " + split.train().size() + ", test laps: " + split.test().size());
-        System.out.println("Test races: " + split.test().stream()
-                .map(CleanLap::sessionKey)
-                .distinct()
-                .sorted()
-                .toList());
-
-        tuneWindows(split.train());
-
-        // The training races are split again: the first 12 to fit the model, the last 4 to calibrate the intervals
+        // 16 training and 7 test races; the training races are split again: 12 to fit the model, 4 to calibrate the intervals
+        RaceSplit.Split split = RaceSplit.chronological(laps2024, 16);
         RaceSplit.Split fitSplit = RaceSplit.chronological(split.train(), 12);
-        RegressionForecaster model = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, 1, 5);
-        printCoefficients(model);
 
+        RegressionForecaster model = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, 1, 5);
         ConformalForecaster intervals = ConformalForecaster.calibrate(model, fitSplit.test(), 0.8, 1, 5);
 
-        evaluate(split.test(), model);
-        printStability(split.test(), model, new MovingAverageForecaster(3), 5);
-        printCoverage(split.test(), intervals);
+        ExperimentReport.printDatasets(laps2023, laps2024, split);
+        ExperimentReport.printBaselineTuning(split.train());
+        ExperimentReport.printCoefficients(model);
+        ExperimentReport.printAccuracy(split.test(), model);
+        ExperimentReport.printStability(split.test(), model, new MovingAverageForecaster(3), 5);
+        ExperimentReport.printCoverage(split.test(), intervals);
+        ExperimentReport.printThresholdWindow(fitSplit.test(), split.test(), model);
+        ExperimentReport.printTyreAgeWindow(fitSplit.test(), split.test(), model, pitAges, tracks);
     }
-
-    /**
-     * Prints the MAE five laps ahead of the window-based baselines on the given laps,
-     * for different window sizes, to choose the window without looking at the test races.
-     */
-    private static void tuneWindows(List<CleanLap> trainLaps) {
-        Backtester backtester = new Backtester();
-        int horizon = 5;
-
-        System.out.println("\nWindow tuning on training races (horizon " + horizon + ")");
-        System.out.printf("  naive = %.3f s%n", backtester.mae(trainLaps, new NaiveForecaster(), horizon));
-
-        for (int window : new int[]{3, 5, 10, 15, 20}) {
-            double mae = backtester.mae(trainLaps, new MovingAverageForecaster(window), horizon);
-            System.out.printf("  moving avg   window %2d               = %.3f s%n", window, mae);
-        }
-        for (int window : new int[]{10, 15, 20}) {
-            for (int minLaps : new int[]{3, 5, 8}) {
-                double mae = backtester.mae(trainLaps, new LinearTrendForecaster(window, minLaps), horizon);
-                System.out.printf("  linear trend window %2d, minLaps %d   = %.3f s%n", window, minLaps, mae);
-            }
-        }
-    }
-
-    /**
-     * Prints the coefficients learned by the regression model for each horizon.
-     */
-    private static void printCoefficients(RegressionForecaster model) {
-        String[] names = {"intercept", "tyre age", "lap number", "medium", "hard", "last delta", "stint slope", "track deg.", "race deg."};
-        for (int horizon : new int[]{1, 5}) {
-            System.out.println("\nRegression coefficients, horizon " + horizon);
-            double[] beta = model.coefficients(horizon);
-            for (int i = 0; i < beta.length; i++)
-                System.out.printf("  %-12s %+.4f%n", names[i], beta[i]);
-        }
-    }
-
-    /**
-     * Prints the MAE of the baselines and of the regression model on the given laps,
-     * one and five laps ahead.
-     */
-    private static void evaluate(List<CleanLap> testLaps, RegressionForecaster model) {
-        Map<String, Forecaster> forecasters = new LinkedHashMap<>();
-        forecasters.put("Naive", new NaiveForecaster());
-        forecasters.put("Moving avg (3)", new MovingAverageForecaster(3));
-        forecasters.put("Linear trend (20, 8)", new LinearTrendForecaster(20, 8));
-        forecasters.put("Regression", model);
-
-        Backtester backtester = new Backtester();
-
-        for (int horizon : new int[]{1, 5}) {
-            System.out.println("\nHorizon " + horizon);
-            for (Map.Entry<String, Forecaster> entry : forecasters.entrySet()) {
-                double mae = backtester.mae(testLaps, entry.getValue(), horizon);
-                System.out.printf("  %-22s MAE = %.3f s%n", entry.getKey(), mae);
-            }
-        }
-    }
-
-    /**
-     * Prints, for each test race, the MAE of the model and of the best baseline,
-     * and how many races the model wins.
-     */
-    private static void printStability(List<CleanLap> testLaps, Forecaster model, Forecaster baseline, int horizon) {
-        Backtester backtester = new Backtester();
-        Map<String, Double> modelMae = backtester.maeByRace(testLaps, model, horizon);
-        Map<String, Double> baselineMae = backtester.maeByRace(testLaps, baseline, horizon);
-
-        System.out.println("\nStability, horizon " + horizon);
-        int wins = 0;
-        for (String circuit : modelMae.keySet()) {
-            double m = modelMae.get(circuit), b = baselineMae.get(circuit);
-            if (m < b) wins++;
-            System.out.printf("  %-20s model = %.3f s   baseline = %.3f s   %s%n", circuit, m, b, m < b ? "WIN" : "");
-        }
-        System.out.printf("  Model better in %d of %d races%n", wins, modelMae.size());
-    }
-
-    /**
-     * Prints the margin of the 80% prediction intervals and their coverage on the given laps.
-     */
-    private static void printCoverage(List<CleanLap> testLaps, ConformalForecaster intervals) {
-        Backtester backtester = new Backtester();
-        System.out.println("\nPrediction intervals (80%)");
-        for (int horizon : new int[]{1, 5}) {
-            System.out.printf("  horizon %d: margin = ±%.3f s, coverage = %.1f%%%n",
-                    horizon, intervals.margin(horizon), backtester.coverage(testLaps, intervals, horizon) * 100);
-        }
-    }
-
-    /**
-     * Returns the clean laps of the given season, reading them from the CSV file if it exists,
-     * otherwise downloading them from OpenF1 and saving them to the file.
-     */
-    private static List<CleanLap> loadSeason(int year) throws IOException, InterruptedException {
-        Path csv = Path.of("data", "laps_" + year + ".csv");
-        if (Files.exists(csv)) {
-            System.out.println("Loaded " + year + " dataset from " + csv);
-            return new CsvReader().read(csv);
-        }
-        List<CleanLap> laps = downloadSeason(year);
-        new CsvExporter().write(laps, csv);
-        return laps;
-    }
-
-    /**
-     * Downloads all race sessions of the given year from OpenF1 and returns their clean laps.
-     */
-    private static List<CleanLap> downloadSeason(int year) throws IOException, InterruptedException {
-        OpenF1Client client = new OpenF1Client();
-        LapDatasetBuilder builder = new LapDatasetBuilder();
-
-        List<Session> races = client.getRaceSessions(year);
-        System.out.println("Races found: " + races.size());
-
-        List<CleanLap> result = new ArrayList<>();
-
-        for (Session race : races) {
-            if (race.sessionKey() == null || race.circuitShortName() == null) continue;
-
-            List<Lap> laps = client.getLaps(race.sessionKey());
-            List<Stint> stints = client.getStints(race.sessionKey());
-            List<Pit> pits = client.getPits(race.sessionKey());
-            List<RaceControlMessage> messages = new ArrayList<>(client.getSafetyCarMessages(race.sessionKey()));
-            messages.addAll(client.getRedFlagMessages(race.sessionKey()));
-
-            List<CleanLap> clean = builder.build(race.circuitShortName(), laps, stints, pits, messages);
-            result.addAll(clean);
-
-            System.out.printf("%-20s %4d raw laps -> %4d clean laps%n",
-                    race.circuitShortName(), laps.size(), clean.size());
-        }
-        return result;
-    }
-
 }
