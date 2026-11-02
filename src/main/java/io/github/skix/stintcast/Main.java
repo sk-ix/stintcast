@@ -3,6 +3,7 @@ package io.github.skix.stintcast;
 import io.github.skix.stintcast.client.OpenF1Client;
 import io.github.skix.stintcast.evaluation.Backtester;
 import io.github.skix.stintcast.evaluation.RaceSplit;
+import io.github.skix.stintcast.forecast.ConformalForecaster;
 import io.github.skix.stintcast.forecast.Forecaster;
 import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
@@ -43,11 +44,16 @@ public class Main {
 
         tuneWindows(split.train());
 
-        RegressionForecaster model = RegressionForecaster.train(split.train(), tracks, raceDegradation, 1, 5);
+        // The training races are split again: the first 12 to fit the model, the last 4 to calibrate the intervals
+        RaceSplit.Split fitSplit = RaceSplit.chronological(split.train(), 12);
+        RegressionForecaster model = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, 1, 5);
         printCoefficients(model);
+
+        ConformalForecaster intervals = ConformalForecaster.calibrate(model, fitSplit.test(), 0.8, 1, 5);
 
         evaluate(split.test(), model);
         printStability(split.test(), model, new MovingAverageForecaster(3), 5);
+        printCoverage(split.test(), intervals);
     }
 
     /**
@@ -125,6 +131,18 @@ public class Main {
             System.out.printf("  %-20s model = %.3f s   baseline = %.3f s   %s%n", circuit, m, b, m < b ? "WIN" : "");
         }
         System.out.printf("  Model better in %d of %d races%n", wins, modelMae.size());
+    }
+
+    /**
+     * Prints the margin of the 80% prediction intervals and their coverage on the given laps.
+     */
+    private static void printCoverage(List<CleanLap> testLaps, ConformalForecaster intervals) {
+        Backtester backtester = new Backtester();
+        System.out.println("\nPrediction intervals (80%)");
+        for (int horizon : new int[]{1, 5}) {
+            System.out.printf("  horizon %d: margin = ±%.3f s, coverage = %.1f%%%n",
+                    horizon, intervals.margin(horizon), backtester.coverage(testLaps, intervals, horizon) * 100);
+        }
     }
 
     /**

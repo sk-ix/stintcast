@@ -1,6 +1,8 @@
 package io.github.skix.stintcast.evaluation;
 
+import io.github.skix.stintcast.forecast.ConformalForecaster;
 import io.github.skix.stintcast.forecast.Forecaster;
+import io.github.skix.stintcast.forecast.Interval;
 import io.github.skix.stintcast.model.CleanLap;
 import io.github.skix.stintcast.pipeline.StintReplay;
 
@@ -62,6 +64,29 @@ public class Backtester {
         }
 
         return result;
+    }
+
+    /**
+     * Computes the share of cases in which the real lap time falls inside the prediction interval.
+     *
+     * @param testLaps the laps to evaluate on
+     * @param forecaster the forecaster with intervals to evaluate
+     * @param horizon how many laps ahead to forecast
+     * @return the coverage, between 0 and 1
+     * @throws IllegalStateException if there is no lap to evaluate
+     */
+    public double coverage(List<CleanLap> testLaps, ConformalForecaster forecaster, int horizon) {
+        List<Boolean> inside = new ArrayList<>();
+
+        StintReplay.forEachCase(testLaps, horizon, (history, actual) -> {
+            Interval interval = forecaster.forecast(history, horizon);
+            inside.add(interval.contains(actual));
+        });
+
+        if (inside.isEmpty()) throw new IllegalStateException("No laps to evaluate");
+
+        long hits = inside.stream().filter(b -> b).count();
+        return (double) hits / inside.size();
     }
 
 }
