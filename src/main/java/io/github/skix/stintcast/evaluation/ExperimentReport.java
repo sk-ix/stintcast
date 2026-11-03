@@ -9,17 +9,16 @@ import io.github.skix.stintcast.forecast.regression.RaceDegradation;
 import io.github.skix.stintcast.forecast.regression.RegressionForecaster;
 import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.CleanLap;
-import io.github.skix.stintcast.strategy.DegradationThresholdAdvisor;
-import io.github.skix.stintcast.strategy.PitAgeHistory;
-import io.github.skix.stintcast.strategy.TyreAgeAdvisor;
+import io.github.skix.stintcast.strategy.*;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Prints the results of the experiments: tuning of the baselines, choice of the regression fit,
- * accuracy, stability and coverage of the forecasts, and evaluation of the pit window advisors.
+ * accuracy, stability and coverage of the forecasts, a check of the tyre status, and evaluation of the pit window advisors.
  */
 public final class ExperimentReport {
 
@@ -147,6 +146,26 @@ public final class ExperimentReport {
         for (int horizon : new int[]{1, 5}) {
             System.out.printf("  horizon %d: margin = ±%.3f s, coverage = %.1f%%%n",
                     horizon, intervals.margin(horizon), backtester.coverage(testLaps, intervals, horizon) * 100);
+        }
+    }
+
+    /**
+     * Prints the tyre status lap by lap for one stint of the given laps, to check that the values make sense.
+     */
+    public static void printTyreStatus(List<CleanLap> laps, TyreStatusEstimator estimator,
+                                       String circuit, int driverNumber, int stintNumber) {
+        List<CleanLap> stint = laps.stream()
+                .filter(l -> l.circuit().equals(circuit) && l.driverNumber() == driverNumber && l.stintNumber() == stintNumber)
+                .sorted(Comparator.comparingInt(CleanLap::lapNumber))
+                .toList();
+
+        System.out.printf("%nTyre status, %s, car %d, stint %d%n", circuit, driverNumber, stintNumber);
+        for (int i = 0; i < stint.size(); i++) {
+            TyreStatus s = estimator.estimate(stint.subList(0, i + 1));
+            System.out.printf("  lap %2d  age %2d / usual %4.1f   change %+.2f s [%+.2f, %+.2f]   race %+.2f   track %+.2f%n",
+                    stint.get(i).lapNumber(), s.tyreAge(), s.usualPitAge(),
+                    s.expectedChange().point(), s.expectedChange().lower(), s.expectedChange().upper(),
+                    s.raceDegradation(), s.trackDegradation());
         }
     }
 

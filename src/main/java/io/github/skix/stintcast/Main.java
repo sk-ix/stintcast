@@ -10,6 +10,7 @@ import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.*;
 import io.github.skix.stintcast.pipeline.SeasonLoader;
 import io.github.skix.stintcast.strategy.PitAgeHistory;
+import io.github.skix.stintcast.strategy.TyreStatusEstimator;
 
 import java.io.IOException;
 import java.util.*;
@@ -39,6 +40,8 @@ public class Main {
         ExperimentReport.printNoiseFloor(split.test());
         ExperimentReport.printStability(split.test(), model, new MovingAverageForecaster(3), 5);
         ExperimentReport.printCoverage(split.test(), intervals);
+        TyreStatusEstimator tyreStatus = new TyreStatusEstimator(intervals, pitAges, tracks, raceDegradation);
+        ExperimentReport.printTyreStatus(split.test(), tyreStatus, "Lusail", 16, 1);
         ExperimentReport.printThresholdWindow(fitSplit.test(), split.test(), model);
         ExperimentReport.printTyreAgeWindow(fitSplit.test(), split.test(), model, pitAges, tracks);
     }
