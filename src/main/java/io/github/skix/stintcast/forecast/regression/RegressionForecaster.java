@@ -35,10 +35,12 @@ public class RegressionForecaster implements Forecaster {
      * @param trainLaps the laps to learn from
      * @param tracks    the history of each circuit and compound from the previous season
      * @param race      the changes observed in each race
+     * @param robust    true to fit with the Huber loss, false for ordinary least squares
      * @param horizons  the horizons the model will be able to forecast
      * @return the trained forecaster
      */
-    public static RegressionForecaster train(List<CleanLap> trainLaps, TrackHistory tracks, RaceDegradation race, int... horizons) {
+    public static RegressionForecaster train(List<CleanLap> trainLaps, TrackHistory tracks,
+                                             RaceDegradation race, boolean robust, int... horizons) {
         Map<Integer, double[]> coefficients = new HashMap<>();
 
         for (int horizon : horizons) {
@@ -50,12 +52,17 @@ public class RegressionForecaster implements Forecaster {
                 targets.add(actual - LapFeatures.currentPace(history));
             });
 
-            OLSMultipleLinearRegression ols = new OLSMultipleLinearRegression();
-            ols.newSampleData(
-                    targets.stream().mapToDouble(Double::doubleValue).toArray(),
-                    features.toArray(new double[0][])
-            );
-            coefficients.put(horizon, ols.estimateRegressionParameters());
+            double[][] x = features.toArray(double[][]::new);
+            double[] y = targets.stream().mapToDouble(Double::doubleValue).toArray();
+
+            double[] beta;
+            if (robust) beta = HuberRegression.fit(x, y);
+            else {
+                OLSMultipleLinearRegression ols = new OLSMultipleLinearRegression();
+                ols.newSampleData(y, x);
+                beta = ols.estimateRegressionParameters();
+            }
+            coefficients.put(horizon, beta);
         }
         return new RegressionForecaster(coefficients, tracks, race);
     }

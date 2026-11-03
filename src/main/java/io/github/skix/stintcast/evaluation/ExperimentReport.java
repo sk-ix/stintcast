@@ -5,6 +5,7 @@ import io.github.skix.stintcast.forecast.Forecaster;
 import io.github.skix.stintcast.forecast.baseline.LinearTrendForecaster;
 import io.github.skix.stintcast.forecast.baseline.MovingAverageForecaster;
 import io.github.skix.stintcast.forecast.baseline.NaiveForecaster;
+import io.github.skix.stintcast.forecast.regression.RaceDegradation;
 import io.github.skix.stintcast.forecast.regression.RegressionForecaster;
 import io.github.skix.stintcast.forecast.regression.TrackHistory;
 import io.github.skix.stintcast.model.CleanLap;
@@ -17,8 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Prints the results of the experiments: tuning of the baselines, accuracy, stability
- * and coverage of the forecasts, and evaluation of the pit window advisors.
+ * Prints the results of the experiments: tuning of the baselines, choice of the regression fit,
+ * accuracy, stability and coverage of the forecasts, and evaluation of the pit window advisors.
  */
 public final class ExperimentReport {
 
@@ -58,6 +59,22 @@ public final class ExperimentReport {
     }
 
     /**
+     * Compares the OLS and Huber fits on the calibration races, to choose the fit without looking at the test races.
+     */
+    public static void printFitComparison(RaceSplit.Split fitSplit, TrackHistory tracks, RaceDegradation raceDegradation) {
+        Backtester backtester = new Backtester();
+        RegressionForecaster ols = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, false, 1, 5);
+        RegressionForecaster huber = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, true, 1, 5);
+
+        System.out.println("\nOLS vs Huber on calibration races");
+        for (int horizon : new int[]{1, 5}) {
+            System.out.printf("  horizon %d: OLS = %.3f s   Huber = %.3f s%n", horizon,
+                    backtester.mae(fitSplit.test(), ols, horizon),
+                    backtester.mae(fitSplit.test(), huber, horizon));
+        }
+    }
+
+    /**
      * Prints the coefficients learned by the regression model for each horizon.
      */
     public static void printCoefficients(RegressionForecaster model) {
@@ -90,6 +107,16 @@ public final class ExperimentReport {
                 System.out.printf("  %-22s MAE = %.3f s%n", entry.getKey(), mae);
             }
         }
+    }
+
+    /**
+     * Prints the error of a smooth curve fitted on the whole stint, an estimate of the noise
+     * that no forecaster based on the pace can remove.
+     */
+    public static void printNoiseFloor(List<CleanLap> testLaps) {
+        System.out.println("\nNoise floor on test races");
+        for (int horizon : new int[]{1, 5})
+            System.out.printf("  horizon %d: MAE = %.3f s%n", horizon, NoiseFloor.mae(testLaps, horizon));
     }
 
     /**

@@ -28,13 +28,15 @@ public class Main {
         RaceSplit.Split split = RaceSplit.chronological(laps2024, 16);
         RaceSplit.Split fitSplit = RaceSplit.chronological(split.train(), 12);
 
-        RegressionForecaster model = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, 1, 5);
+        RegressionForecaster model = RegressionForecaster.train(fitSplit.train(), tracks, raceDegradation, false, 1, 5);
         ConformalForecaster intervals = ConformalForecaster.calibrate(model, fitSplit.test(), 0.8, 1, 5);
 
         ExperimentReport.printDatasets(laps2023, laps2024, split);
         ExperimentReport.printBaselineTuning(split.train());
+        ExperimentReport.printFitComparison(fitSplit, tracks, raceDegradation);
         ExperimentReport.printCoefficients(model);
         ExperimentReport.printAccuracy(split.test(), model);
+        ExperimentReport.printNoiseFloor(split.test());
         ExperimentReport.printStability(split.test(), model, new MovingAverageForecaster(3), 5);
         ExperimentReport.printCoverage(split.test(), intervals);
         ExperimentReport.printThresholdWindow(fitSplit.test(), split.test(), model);

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+<style>
+.bg{fill:#fcfcfb}.ink{fill:#0b0b0b}.ink2{fill:#52514e}.muted{fill:#898781}
+.grid{stroke:#e1e0d9}.floor{stroke:#52514e}.base{fill:#898781}.hero{fill:#2a78d6}.ring{stroke:#fcfcfb}.track{stroke:#e1e0d9}
+@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.ink{fill:#f0efec}.ink2{fill:#c3c2b7}.grid{stroke:#2c2c2a}.floor{stroke:#c3c2b7}.hero{fill:#3987e5}.ring{stroke:#1a1a19}.track{stroke:#2c2c2a}}
+</style>
+<rect class="bg" width="880" height="300" rx="12"/>
+<text class="ink" x="24" y="34" font-size="17" font-weight="600">Forecast error on 7 unseen races (MAE, seconds, lower is better)</text>
+<text class="ink2" x="120" y="64" font-size="13" font-weight="600">1 lap ahead</text>
+<line class="grid" x1="167.1" y1="74" x2="167.1" y2="236" stroke-width="1"/>
+<text class="muted" x="167.1" y="252" font-size="11" text-anchor="middle">0.40</text>
+<line class="grid" x1="261.4" y1="74" x2="261.4" y2="236" stroke-width="1"/>
+<text class="muted" x="261.4" y="252" font-size="11" text-anchor="middle">0.50</text>
+<line class="grid" x1="355.7" y1="74" x2="355.7" y2="236" stroke-width="1"/>
+<text class="muted" x="355.7" y="252" font-size="11" text-anchor="middle">0.60</text>
+<line class="grid" x1="450.0" y1="74" x2="450.0" y2="236" stroke-width="1"/>
+<text class="muted" x="450.0" y="252" font-size="11" text-anchor="middle">0.70</text>
+<line class="floor" x1="139.8" y1="74" x2="139.8" y2="236" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text class="ink2" x="144.8" y="270" font-size="11" text-anchor="middle">noise floor 0.371</text>
+<text class="ink2" x="106" y="94" font-size="13" text-anchor="end" font-weight="400">Linear trend</text>
+<line class="track" x1="139.8" y1="90" x2="206.7" y2="90" stroke-width="2"/>
+<circle class="base ring" cx="206.7" cy="90" r="6" stroke-width="2"/>
+<text class="ink2" x="218.7" y="94" font-size="12" font-weight="400">0.442</text>
+<text class="ink2" x="106" y="134" font-size="13" text-anchor="end" font-weight="400">Naive</text>
+<line class="track" x1="139.8" y1="130" x2="170.0" y2="130" stroke-width="2"/>
+<circle class="base ring" cx="170.0" cy="130" r="6" stroke-width="2"/>
+<text class="ink2" x="182.0" y="134" font-size="12" font-weight="400">0.403</text>
+<text class="ink2" x="106" y="174" font-size="13" text-anchor="end" font-weight="400">Moving average</text>
+<line class="track" x1="139.8" y1="170" x2="184.1" y2="170" stroke-width="2"/>
+<circle class="base ring" cx="184.1" cy="170" r="6" stroke-width="2"/>
+<text class="ink2" x="196.1" y="174" font-size="12" font-weight="400">0.418</text>
+<text class="ink" x="106" y="214" font-size="13" text-anchor="end" font-weight="600">StintCast</text>
+<line class="track" x1="139.8" y1="210" x2="157.7" y2="210" stroke-width="2"/>
+<circle class="hero ring" cx="157.7" cy="210" r="7" stroke-width="2"/>
+<text class="ink" x="169.7" y="214" font-size="12" font-weight="600">0.390</text>
+<text class="ink2" x="510" y="64" font-size="13" font-weight="600">5 laps ahead</text>
+<line class="grid" x1="557.1" y1="74" x2="557.1" y2="236" stroke-width="1"/>
+<text class="muted" x="557.1" y="252" font-size="11" text-anchor="middle">0.40</text>
+<line class="grid" x1="651.4" y1="74" x2="651.4" y2="236" stroke-width="1"/>
+<text class="muted" x="651.4" y="252" font-size="11" text-anchor="middle">0.50</text>
+<line class="grid" x1="745.7" y1="74" x2="745.7" y2="236" stroke-width="1"/>
+<text class="muted" x="745.7" y="252" font-size="11" text-anchor="middle">0.60</text>
+<line class="grid" x1="840.0" y1="74" x2="840.0" y2="236" stroke-width="1"/>
+<text class="muted" x="840.0" y="252" font-size="11" text-anchor="middle">0.70</text>
+<line class="floor" x1="534.5" y1="74" x2="534.5" y2="236" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text class="ink2" x="539.5" y="270" font-size="11" text-anchor="middle">noise floor 0.376</text>
+<line class="track" x1="534.5" y1="90" x2="807.0" y2="90" stroke-width="2"/>
+<circle class="base ring" cx="807.0" cy="90" r="6" stroke-width="2"/>
+<text class="ink2" x="819.0" y="94" font-size="12" font-weight="400">0.665</text>
+<line class="track" x1="534.5" y1="130" x2="720.3" y2="130" stroke-width="2"/>
+<circle class="base ring" cx="720.3" cy="130" r="6" stroke-width="2"/>
+<text class="ink2" x="732.3" y="134" font-size="12" font-weight="400">0.573</text>
+<line class="track" x1="534.5" y1="170" x2="717.4" y2="170" stroke-width="2"/>
+<circle class="base ring" cx="717.4" cy="170" r="6" stroke-width="2"/>
+<text class="ink2" x="729.4" y="174" font-size="12" font-weight="400">0.570</text>
+<line class="track" x1="534.5" y1="210" x2="698.6" y2="210" stroke-width="2"/>
+<circle class="hero ring" cx="698.6" cy="210" r="7" stroke-width="2"/>
+<text class="ink" x="710.6" y="214" font-size="12" font-weight="600">0.550</text>
+</svg>
